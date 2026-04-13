@@ -1,21 +1,35 @@
 const amqp = require("amqplib");
 
-async function publishAttack(data) {
-  const conn = await amqp.connect("amqp://localhost");
-  const ch = await conn.createChannel();
+async function publishAttack() {
+  try {
+    const conn = await amqp.connect("amqp://localhost");
+    const ch = await conn.createChannel();
 
-  const exchange = "attack_exchange";
+    const exchange = "attack_exchange";
 
-  await ch.assertExchange(exchange, "topic", { durable: true });
+    // durable exchange
+    await ch.assertExchange(exchange, "topic", { durable: true });
 
-  ch.publish(
-    exchange,
-    "attack.live",
-    Buffer.from(JSON.stringify(data)),
-    { persistent: true } // 🔥 VERY IMPORTANT
-  );
+    const message = {
+      attack: "DDoS",
+      severity: "high",
+      time: new Date().toISOString()
+    };
 
-  console.log("Attack data sent (durable)");
+    ch.publish(
+      exchange,
+      "attack.live",
+      Buffer.from(JSON.stringify(message)),
+      { persistent: true } // 🔥 survives restart
+    );
 
-  setTimeout(() => conn.close(), 500);
+    console.log("✅ Attack data sent:", message);
+
+    setTimeout(() => conn.close(), 500);
+
+  } catch (err) {
+    console.error("❌ Producer error:", err);
+  }
 }
+
+publishAttack();
